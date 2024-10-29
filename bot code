@@ -14,8 +14,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger()
 
 # Replace with your bot token and Heroku API key
-TOKEN = 'YOUR_BOT_TOKEN'  # Your Telegram Bot Token
-HEROKU_API_KEY = '7718915902:AAGtZXkt3kKSHTcqRgoJP-YjENCogWC4Wok'  # Your Heroku API Key
+TOKEN = '7718915902:AAGtZXkt3kKSHTcqRgoJP-YjENCogWC4Wok'  # Your Telegram Bot Token
+HEROKU_API_KEY = 'vHRKU-58dbc4f4-8886-4a3c-a428-28918af19dfb'  # Your Heroku API Key
 
 # Start command to introduce Kaleida
 async def start(update: Update, context: CallbackContext) -> None:
