@@ -1,0 +1,131 @@
+import logging
+import os
+import requests
+from io import BytesIO
+from PIL import Image
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackContext
+from youtube_dl import YoutubeDL
+from pydub import AudioSegment
+from transformers import pipeline
+
+# Logging setup
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger()
+
+# Replace with your bot token and Heroku API key
+TOKEN = 'YOUR_BOT_TOKEN'  # Your Telegram Bot Token
+HEROKU_API_KEY = '7718915902:AAGtZXkt3kKSHTcqRgoJP-YjENCogWC4Wok'  # Your Heroku API Key
+
+# Start command to introduce Kaleida
+async def start(update: Update, context: CallbackContext) -> None:
+    welcome_message = """
+Welcome to Kaleida! 🌸✨
+"Where love and creativity converge"
+
+You can create art, music, love letters, and more with AI-powered tools. Here's what you can do:
+
+- /artstudio <keyword>: Create stunning AI-generated art 🎨
+- /musiccomposer <song title>: Compose custom music tracks 🎵
+- /quote: Discover or generate inspiring quotes 📜
+- /couplesgallery: Build your personal relationship gallery 💖
+- /loveletters: Generate romantic letters for your partner 💌
+- /memorylane: Explore shared memories in your virtual scrapbook 📷
+"""
+    await update.message.reply_text(welcome_message)
+
+# Help command to list all available commands
+async def help_command(update: Update, context: CallbackContext) -> None:
+    help_message = """
+Here are the available commands:
+- /artstudio <keyword> - Create AI art
+- /musiccomposer <song title> - Download and remix music
+- /quote - Generate a random quote
+- /gpt <prompt> - Generate text using GPT-2
+- /styletransfer <content URL> <style URL> - Apply style transfer
+- /imagecompletion <image URL> - Complete an image
+- /musicremix <song title> - Remix music tracks
+"""
+    await update.message.reply_text(help_message)
+
+# AI Art Studio command
+async def artstudio(update: Update, context: CallbackContext) -> None:
+    try:
+        prompt = context.args[0]  # Get keyword from arguments
+        url = f"https://source.unsplash.com/400x400/?{prompt}"
+        response = requests.get(url)
+        img = Image.open(BytesIO(response.content))
+        img.save("image.jpg")
+        await update.message.reply_photo(photo=open("image.jpg", "rb"))
+    except IndexError:
+        await update.message.reply_text("Please provide a keyword for the image.")
+
+# Music Composer command
+async def musiccomposer(update: Update, context: CallbackContext) -> None:
+    try:
+        song_title = context.args[0]
+        youtube_client = YoutubeDL({'format': 'bestaudio'})
+        search_results = youtube_client.extract_info(f"ytsearch:{song_title}", download=False)['entries']
+        video_url = search_results[0]['url']
+        
+        video_info = youtube_client.extract_info(video_url, download=True)
+        audio_file = AudioSegment.from_file(f"{video_info['id']}.webm")
+        audio_file.export('output.mp3', format='mp3')
+        
+        await update.message.reply_audio(audio=open('output.mp3', 'rb'))
+    except IndexError:
+        await update.message.reply_text("Please provide a song title to download.")
+
+# Quote Generator command
+async def quote(update: Update, context: CallbackContext) -> None:
+    try:
+        quote_response = requests.get("https://api.quotable.io/random").json()
+        quote = quote_response["content"]
+        author = quote_response["author"]
+        await update.message.reply_text(f"{quote} - {author}")
+    except Exception as e:
+        await update.message.reply_text("Sorry, I couldn't fetch a quote right now.")
+
+# GPT Text Generator command
+async def gpt(update: Update, context: CallbackContext) -> None:
+    try:
+        prompt = ' '.join(context.args)
+        generator = pipeline('text-generation', model='gpt2')
+        result = generator(prompt, max_length=50)[0]['generated_text']
+        await update.message.reply_text(result)
+    except IndexError:
+        await update.message.reply_text("Please provide a prompt for text generation.")
+
+# Style Transfer command
+async def style_transfer(update: Update, context: CallbackContext) -> None:
+    try:
+        content_url = context.args[0]
+        style_url = context.args[1]
+        
+        content_image = Image.open(BytesIO(requests.get(content_url).content))
+        style_image = Image.open(BytesIO(requests.get(style_url).content))
+        
+        # Placeholder for actual style transfer logic
+        output_image = content_image  # Replace with actual style transfer implementation
+        output_image.save("stylized_image.jpg")
+        
+        await update.message.reply_photo(photo=open("stylized_image.jpg", "rb"))
+    except IndexError:
+        await update.message.reply_text("Please provide the URLs for both the content and style images.")
+
+# Main function to run the bot
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    # Command handlers
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('help', help_command))
+    app.add_handler(CommandHandler('artstudio', artstudio))
+    app.add_handler(CommandHandler('musiccomposer', musiccomposer))
+    app.add_handler(CommandHandler('quote', quote))
+    app.add_handler(CommandHandler('gpt', gpt))
+    app.add_handler(CommandHandler('styletransfer', style_transfer))
+
+    # Start the bot
+    print("Bot is running...")
+    app.run_polling()
